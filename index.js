@@ -24,6 +24,12 @@ async function run() {
   await client.connect();
   const productCollection = client.db("fortunio_timber").collection("products");
   try {
+    // get all products-----------
+    app.get("/products", async (req, res) => {
+      const query = {};
+      const result = await productCollection.find(query).toArray();
+      res.send(result);
+    });
   } finally {
     //
   }
