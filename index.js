@@ -23,15 +23,46 @@ const client = new MongoClient(uri, {
 async function run() {
   await client.connect();
   const productCollection = client.db("fortunio_timber").collection("products");
+  const OderInfoCollection = client
+    .db("fortunio_timber")
+    .collection("orderInfo");
   console.log("listening from DB");
   try {
+    // ordered user info
+    app.post("/orderInfo", async (req, res) => {
+      const orderInfo = req.body;
+      const result = await OderInfoCollection.insertOne(orderInfo);
+      if (result.acknowledged) {
+        res.send({ success: true, message: "order Successfully" });
+      }
+    });
+    // get my oders
+    app.get("/myorders", async (req, res) => {
+      const email = req.query.email;
+      const result = await OderInfoCollection.find({ email }).toArray();
+      res.send(result);
+    });
+    // delete my orders
+    app.delete("/myorders/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const result = await OderInfoCollection.deleteOne(query);
+      if (result.deletedCount > 0) {
+        res.send({ success: true, message: "Canceled successfully" });
+      }
+    });
     // update a product delivery
     app.post("/product/:id", async (req, res) => {
       const id = req.params;
       const available_quantity = req.body.newQuantity;
       const filter = { _id: ObjectId(id) };
+      options = { upsert: true };
       const updatedDoc = { $set: { available_quantity } };
-      const results = await productCollection.updateOne(filter, updatedDoc);
+      const results = await productCollection.updateOne(
+        filter,
+        updatedDoc,
+        options
+      );
       if (results?.acknowledged) {
         res.send({ success: true, message: "Product Booked" });
       }
