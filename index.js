@@ -38,6 +38,7 @@ const client = new MongoClient(uri, {
 async function run() {
   await client.connect();
   const productCollection = client.db("fortunio_timber").collection("products");
+  const userCollection = client.db("fortunio_timber").collection("users");
   const OderInfoCollection = client
     .db("fortunio_timber")
     .collection("orderInfo");
@@ -46,10 +47,24 @@ async function run() {
     // create jwt
     app.put("/login/:email", async (req, res) => {
       const user = req.body;
-      console.log(user);
+      const email = req.params.email;
+      console.log(email);
       const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRETE, {
         expiresIn: "1d",
       });
+      //
+      const ourUser = {
+        email,
+        role: "user",
+      };
+      const filter = { email };
+      const options = { upsert: true };
+      const updatedDoc = { $set: ourUser };
+      const result = await userCollection.updateOne(
+        filter,
+        updatedDoc,
+        options
+      );
       res.send({ accessToken });
     });
     // ordered user info
