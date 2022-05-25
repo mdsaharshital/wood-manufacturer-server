@@ -120,7 +120,8 @@ async function run() {
       }
       res.status(403).send({ message: "forbidden access" });
     });
-    // get products through id
+
+    // get orders through id
     app.get("/myorders/:id", async (req, res) => {
       const id = req.params;
       const filter = { _id: ObjectId(id) };
@@ -135,6 +136,12 @@ async function run() {
       if (result.deletedCount > 0) {
         res.send({ success: true, message: "Canceled successfully" });
       }
+    });
+    // add product through admin
+    app.post("/addproduct", verifyJWT, verifyAdmin, async (req, res) => {
+      const product = req.body;
+      const result = await productCollection.insertOne(product);
+      res.send(result);
     });
     // update a product delivery
     app.post("/product/:id", async (req, res) => {
