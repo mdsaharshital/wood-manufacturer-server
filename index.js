@@ -13,6 +13,13 @@ app.use(cors());
 app.use(express.json());
 //----------------------
 
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.7o9n8.mongodb.net/?retryWrites=true&w=majority`;
+const client = new MongoClient(uri, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  serverApi: ServerApiVersion.v1,
+});
+
 function verifyJWT(req, res, next) {
   const authToken = req.headers.authorization;
   if (!authToken) {
@@ -28,13 +35,6 @@ function verifyJWT(req, res, next) {
   });
 }
 
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.7o9n8.mongodb.net/?retryWrites=true&w=majority`;
-const client = new MongoClient(uri, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverApi: ServerApiVersion.v1,
-});
-
 async function run() {
   await client.connect();
   const productCollection = client.db("fortunio_timber").collection("products");
@@ -44,18 +44,53 @@ async function run() {
     .collection("orderInfo");
   console.log("listening from DB");
   try {
+    // verify admin
+    // verify
+    const verifyAdmin = async (req, res, next) => {
+      const requester = req.decoded.email;
+      const requesterAcc = await userCollection.findOne({ email: requester });
+      if (requesterAcc.role === "admin") {
+        next();
+      } else {
+        res.status(403).send({ message: "Access denied" });
+      }
+    };
+
+    //make admin
+    app.put("/user/admin/:email", verifyJWT, verifyAdmin, async (req, res) => {
+      // const email = req.params.email;
+      const email = req.params.email;
+      console.log(email);
+      const filter = { email: email };
+      const updateDoc = {
+        $set: { role: "admin" },
+      };
+      const result = await userCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+    // get admin role
+    app.get("/admin/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      const result = await userCollection.findOne({ email: email });
+      const isAdmin = result.role === "admin";
+      res.send({ admin: isAdmin });
+    });
+    // fetch all user
+    app.get("/users", verifyJWT, verifyAdmin, async (req, res) => {
+      const result = await userCollection.find({}).toArray();
+      res.send(result);
+    });
+
     // create jwt
     app.put("/login/:email", async (req, res) => {
       const user = req.body;
       const email = req.params.email;
-      console.log(email);
       const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRETE, {
         expiresIn: "1d",
       });
       //
       const ourUser = {
         email,
-        role: "user",
       };
       const filter = { email };
       const options = { upsert: true };
