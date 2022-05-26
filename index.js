@@ -39,6 +39,9 @@ async function run() {
   await client.connect();
   const productCollection = client.db("fortunio_timber").collection("products");
   const userCollection = client.db("fortunio_timber").collection("users");
+  const userProfileCollection = client
+    .db("fortunio_timber")
+    .collection("userProfile");
   const OderInfoCollection = client
     .db("fortunio_timber")
     .collection("orderInfo");
@@ -55,7 +58,20 @@ async function run() {
         res.status(403).send({ message: "Access denied" });
       }
     };
-
+    // USER PROFILE UPDATE
+    app.put("/userProfile", verifyJWT, async (req, res) => {
+      const userProfileInfo = req.body;
+      const email = userProfileInfo.email;
+      const filter = { email: email };
+      const options = { upsert: true };
+      const updatedDoc = { $set: userProfileInfo };
+      const result = await userProfileCollection.updateOne(
+        filter,
+        updatedDoc,
+        options
+      );
+      res.send(result);
+    });
     //make admin
     app.put("/user/admin/:email", verifyJWT, verifyAdmin, async (req, res) => {
       // const email = req.params.email;
