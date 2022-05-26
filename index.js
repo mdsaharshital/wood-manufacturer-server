@@ -72,6 +72,12 @@ async function run() {
       );
       res.send(result);
     });
+    // user profile fetch
+    app.get("/userProfile/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      const result = await userProfileCollection.findOne({ email: email });
+      res.send(result);
+    });
     //make admin
     app.put("/user/admin/:email", verifyJWT, verifyAdmin, async (req, res) => {
       // const email = req.params.email;
