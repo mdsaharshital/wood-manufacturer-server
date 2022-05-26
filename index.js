@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
+const stripe = require("stripe")(process.env.STRIPE_SECRETE_KEY);
 const jwt = require("jsonwebtoken");
 
 const app = express();
@@ -39,6 +40,7 @@ async function run() {
   await client.connect();
   const productCollection = client.db("fortunio_timber").collection("products");
   const userCollection = client.db("fortunio_timber").collection("users");
+  const paymentCollection = client.db("fortunio_timber").collection("payments");
   const userProfileCollection = client
     .db("fortunio_timber")
     .collection("userProfile");
@@ -193,6 +195,49 @@ async function run() {
       const id = req.params;
       const filter = { _id: ObjectId(id) };
       const result = await productCollection.findOne(filter);
+      res.send(result);
+    });
+    // delete products through id
+    app.delete("/product/:id", async (req, res) => {
+      const id = req.params;
+      const filter = { _id: ObjectId(id) };
+      const result = await productCollection.deleteOne(filter);
+      res.send(result);
+    });
+
+    //-----------
+    // ALL PAYMENTS HERE=>
+    //-----------
+    app.post("/create-payment-intent", verifyJWT, async (req, res) => {
+      const service = req.body;
+      const price = service.estimatedPrice;
+      const amount = price * 100;
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+    //
+    app.patch("/booking/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const payment = req.body;
+      const filter = { _id: ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          paid: true,
+          status: "paid",
+          transactionId: payment.transactionId,
+        },
+      };
+      const updateBooking = await OderInfoCollection.updateOne(
+        filter,
+        updatedDoc
+      );
+      const result = await paymentCollection.insertOne(payment);
       res.send(result);
     });
   } finally {
