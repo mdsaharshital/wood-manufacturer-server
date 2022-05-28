@@ -41,6 +41,7 @@ async function run() {
   const productCollection = client.db("fortunio_timber").collection("products");
   const userCollection = client.db("fortunio_timber").collection("users");
   const paymentCollection = client.db("fortunio_timber").collection("payments");
+  const reviewCollection = client.db("fortunio_timber").collection("reviews");
   const userProfileCollection = client
     .db("fortunio_timber")
     .collection("userProfile");
@@ -104,7 +105,17 @@ async function run() {
       const result = await userCollection.find({}).toArray();
       res.send(result);
     });
-
+    // get all reviews
+    app.get("/getreviews", async (req, res) => {
+      const result = await reviewCollection.find({}).toArray();
+      res.send(result);
+    });
+    // post a review
+    app.post("/addreview", async (req, res) => {
+      const newReview = req.body;
+      const result = await reviewCollection.insertOne(newReview);
+      res.send(result);
+    });
     // create jwt
     app.put("/login/:email", async (req, res) => {
       const user = req.body;
@@ -133,6 +144,25 @@ async function run() {
       if (result.acknowledged) {
         res.send({ success: true, message: "order Successfully" });
       }
+    });
+    // get all orders for admin
+    app.get("/orders", verifyJWT, verifyAdmin, async (req, res) => {
+      const result = await OderInfoCollection.find({}).toArray();
+      res.send(result);
+    });
+    app.put("/orders/:id", verifyJWT, verifyAdmin, async (req, res) => {
+      const id = req.params;
+      console.log(id);
+      const filter = { _id: ObjectId(id) };
+      console.log(filter);
+      const options = { upsert: true };
+      const updatedDoc = { $set: { status: "shipped" } };
+      const result = await OderInfoCollection.updateOne(
+        filter,
+        updatedDoc,
+        options
+      );
+      res.send(result);
     });
     // get my orders
     app.get("/myorders", verifyJWT, async (req, res) => {
